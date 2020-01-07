@@ -16,6 +16,9 @@ flightgoggles_uav_dynamics:
     thrust_coefficient: 1.91e-6
     torque_coefficient: 2.6e-7
     drag_coefficient: 0.1
+    rotordrag_coefficient_dx: 0.544
+    rotordrag_coefficient_dy: 0.386
+    rotordrag_coefficient_dz: 0.001
     aeromoment_coefficient_xx: 0.003
     aeromoment_coefficient_yy: 0.003
     aeromoment_coefficient_zz: 0.003

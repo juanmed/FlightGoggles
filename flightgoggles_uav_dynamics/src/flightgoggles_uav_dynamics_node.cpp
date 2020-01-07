@@ -105,6 +105,26 @@ node_(nh)
       dragCoeff = 0.1;
   }
 
+  double rotordrag_coefficient_dx;
+  if (!ros::param::get("/uav/flightgoggles_uav_dynamics/rotordrag_coefficient_dx", rotordrag_coefficient_dx)){
+      std::cout << "Did not get rotor drag coefficient dx from the params, defaulting to 0.01 sqrt(N)/(m/s)" << std::endl;
+      rotordrag_coefficient_dx = 0.01;
+  }
+
+  double rotordrag_coefficient_dy;
+  if (!ros::param::get("/uav/flightgoggles_uav_dynamics/rotordrag_coefficient_dy", rotordrag_coefficient_dy)){
+      std::cout << "Did not get rotor drag coefficient dy from the params, defaulting to 0.01 sqrt(N)/(m/s)" << std::endl;
+      rotordrag_coefficient_dy = 0.01;
+  }
+
+  double rotordrag_coefficient_dz;
+  if (!ros::param::get("/uav/flightgoggles_uav_dynamics/rotordrag_coefficient_dz", rotordrag_coefficient_dz)){
+      std::cout << "Did not get rotor drag coefficient dz from the params, defaulting to 0.01 sqrt(N)/(m/s)" << std::endl;
+      rotordrag_coefficient_dz = 0.01;
+  }
+
+  Eigen::Vector3d dragCoeffs(rotordrag_coefficient_dx, rotordrag_coefficient_dy, rotordrag_coefficient_dz);
+
   Eigen::Matrix3d aeroMomentCoefficient;
   if (!ros::param::get("/uav/flightgoggles_uav_dynamics/aeromoment_coefficient_xx", aeroMomentCoefficient(0,0))) { 
       std::cout << "Did not get the aeromoment (x) from the params, defaulting to 0.003 Nm/(rad/s)^2" << std::endl;
@@ -172,7 +192,7 @@ node_(nh)
                         0., maxPropSpeed, motorTimeconstant, motorRotationalInertia,
                         vehicleMass, vehicleInertia,
                         aeroMomentCoefficient, dragCoeff, momentProcessNoiseAutoCorrelation,
-                        forceProcessNoiseAutoCorrelation, gravity);
+                        forceProcessNoiseAutoCorrelation, gravity, dragCoeffs);
 
   // Set and publish motor transforms for the four motors
   Eigen::Isometry3d motorFrame = Eigen::Isometry3d::Identity();
