@@ -262,7 +262,9 @@ node_(nh)
   // Init subscribers and publishers
   /*Allow for up to 100ms sim time buffer of outgoing IMU messages. 
     This should improve IMU integration methods on slow client nodes (see issue #63). */
-  imuPub_ = node_.advertise<sensor_msgs::Imu>("/uav/sensors/imu", 96);  
+  imuPub_ = node_.advertise<sensor_msgs::Imu>("/uav/sensors/imu", 96);
+  statePub_ = node_.advertise<nav_msgs::Odometry>("/uav/state", 96);  
+  rotorDragPub_ = node_.advertise<geometry_msgs::Vector3Stamped>("/uav/rotordrag", 96);
   inputCommandSub_ = node_.subscribe("/uav/input/rateThrust", 1, &Uav_Dynamics::inputCallback, this);
   inputMotorspeedCommandSub_ = node_.subscribe("/uav/input/motorspeed", 1, &Uav_Dynamics::inputMotorspeedCallback, this);
   collisionSub_ = node_.subscribe("/uav/collision", 1, &Uav_Dynamics::collisionCallback, this);
@@ -430,6 +432,8 @@ void Uav_Dynamics::publishState(void){
 
   Eigen::Vector3d position = multicopterSim_->getVehiclePosition();
   Eigen::Quaterniond attitude = multicopterSim_->getVehicleAttitude();
+  Eigen::Vector3d velocity = multicopterSim_ ->getVehicleVelocity();
+  Eigen::Vector3d angularVelocity = multicopterSim_ ->getVehicleAngularVelocity();
 
   transform.transform.translation.x = position(0);
   transform.transform.translation.y = position(1);
@@ -443,6 +447,44 @@ void Uav_Dynamics::publishState(void){
   transform.child_frame_id = "uav/imu";
 
   tfPub_.sendTransform(transform);
+
+  //---also send state as nav_msgs odometry----
+  nav_msgs::Odometry odom;
+  odom.header.stamp = currentTime_;
+  odom.header.frame_id = "world";
+
+  odom.pose.pose.position.x = position(0);
+  odom.pose.pose.position.y = position(1);
+  odom.pose.pose.position.z = position(2);
+
+  odom.twist.twist.linear.x = velocity(0);
+  odom.twist.twist.linear.y = velocity(1);
+  odom.twist.twist.linear.z = velocity(2);
+
+  odom.pose.pose.orientation.x = attitude.x();
+  odom.pose.pose.orientation.y = attitude.y();
+  odom.pose.pose.orientation.z = attitude.z();
+  odom.pose.pose.orientation.w = attitude.w();
+
+  odom.twist.twist.angular.x   = angularVelocity(0);
+  odom.twist.twist.angular.y   = angularVelocity(1);
+  odom.twist.twist.angular.z   = angularVelocity(2);
+
+  statePub_.publish(odom);
+
+  // publish rotor drag force
+  Eigen::Vector3d rotorDragForce = multicopterSim_ ->getVehicleRotorDragForce();
+
+  geometry_msgs::Vector3Stamped vector;
+  vector.header.stamp = currentTime_;
+  vector.header.frame_id = "world";
+
+  vector.vector.x = rotorDragForce(0);
+  vector.vector.y = rotorDragForce(1);
+  vector.vector.z = rotorDragForce(2);
+
+  rotorDragPub_.publish(vector);
+
 }
 
 /**

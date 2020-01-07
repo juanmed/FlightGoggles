@@ -22,10 +22,12 @@
 #include <mav_msgs/Actuators.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TransformStamped.h>
+#include <geometry_msgs/Vector3Stamped.h>
 #include <sensor_msgs/Imu.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/Empty.h>
 #include <rosgraph_msgs/Clock.h>
+#include <nav_msgs/Odometry.h>
 
 #include "../libs/multicopterDynamicsSim/multicopterDynamicsSim.hpp"
 
@@ -118,6 +120,8 @@ class Uav_Dynamics {
         //@{
         ros::Publisher imuPub_;
         ros::Publisher clockPub_;
+        ros::Publisher statePub_;
+        ros::Publisher rotorDragPub_;
 
         void publishState(void);
         void publishIMUMeasurement(void);
