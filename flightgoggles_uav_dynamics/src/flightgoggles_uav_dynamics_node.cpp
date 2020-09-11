@@ -105,7 +105,7 @@ node_(nh)
       dragCoeff = 0.1;
   }
 
-  Eigen::Matrix3d aeroMomentCoefficient;
+  Eigen::Matrix3d aeroMomentCoefficient = Eigen::Matrix3d::Zero();
   if (!ros::param::get("/uav/flightgoggles_uav_dynamics/aeromoment_coefficient_xx", aeroMomentCoefficient(0,0))) { 
       std::cout << "Did not get the aeromoment (x) from the params, defaulting to 0.003 Nm/(rad/s)^2" << std::endl;
       aeroMomentCoefficient(0,0) = 0.003;
@@ -121,7 +121,7 @@ node_(nh)
       aeroMomentCoefficient(2,2) = 0.003;
   }
 
-  Eigen::Matrix3d vehicleInertia;
+  Eigen::Matrix3d vehicleInertia = Eigen::Matrix3d::Zero();
   if (!ros::param::get("/uav/flightgoggles_uav_dynamics/vehicle_inertia_xx", vehicleInertia(0,0))) { 
       std::cout << "Did not get the inertia (x) from the params, defaulting to 0.0049 kg m^2" << std::endl;
       vehicleInertia(0,0) = 0.0049;
@@ -263,6 +263,7 @@ node_(nh)
   /*Allow for up to 100ms sim time buffer of outgoing IMU messages. 
     This should improve IMU integration methods on slow client nodes (see issue #63). */
   imuPub_ = node_.advertise<sensor_msgs::Imu>("/uav/sensors/imu", 96);  
+  odomPub_ = node_.advertise<nav_msgs::Odometry>("/uav/odometry", 96);
   inputCommandSub_ = node_.subscribe("/uav/input/rateThrust", 1, &Uav_Dynamics::inputCallback, this);
   inputMotorspeedCommandSub_ = node_.subscribe("/uav/input/motorspeed", 1, &Uav_Dynamics::inputMotorspeedCallback, this);
   collisionSub_ = node_.subscribe("/uav/collision", 1, &Uav_Dynamics::collisionCallback, this);
@@ -443,6 +444,40 @@ void Uav_Dynamics::publishState(void){
   transform.child_frame_id = "uav/imu";
 
   tfPub_.sendTransform(transform);
+
+  nav_msgs::Odometry odometrymsg;
+
+  odometrymsg.header.stamp = currentTime_;
+  odometrymsg.header.frame_id = "world";
+  odometrymsg.child_frame_id = "uav/imu";
+
+  odometrymsg.pose.pose.position.x = position(0);
+  odometrymsg.pose.pose.position.y = position(1);
+  odometrymsg.pose.pose.position.z = position(2);
+
+  odometrymsg.pose.pose.orientation.x = attitude.x();
+  odometrymsg.pose.pose.orientation.y = attitude.y();
+  odometrymsg.pose.pose.orientation.z = attitude.z();
+  odometrymsg.pose.pose.orientation.w = attitude.w();
+
+  odometrymsg.pose.covariance[0] = -1.;
+
+  Eigen::Vector3d velocity = multicopterSim_->getVehicleVelocity();
+  Eigen::Vector3d angularvelocity = multicopterSim_->getVehicleAngularVelocity();
+
+  Eigen::Vector3d velocityBodyFrame = attitude.inverse()*velocity;
+
+  odometrymsg.twist.twist.linear.x = velocityBodyFrame(0);
+  odometrymsg.twist.twist.linear.y = velocityBodyFrame(1);
+  odometrymsg.twist.twist.linear.z = velocityBodyFrame(2);
+
+  odometrymsg.twist.twist.angular.x = angularvelocity(0);
+  odometrymsg.twist.twist.angular.y = angularvelocity(1);
+  odometrymsg.twist.twist.angular.z = angularvelocity(2);
+
+  odometrymsg.twist.covariance[0] = -1.;
+
+  odomPub_.publish(odometrymsg);
 }
 
 /**
